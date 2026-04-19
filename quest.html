@@ -1,0 +1,1382 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Цифровой Детектив — Квест</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Unbounded:wght@400;700;900&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #070710;
+        --surface: rgba(
+          15,
+          15,
+          26,
+          0.85
+        ); /* Слегка прозрачный для эффекта стекла */
+        --surface2: rgba(22, 22, 37, 0.85);
+        --border: #252538;
+        --accent: #06b6d4;
+        --accent2: #7c3aed;
+        --accent3: #10b981;
+        --warn: #f59e0b;
+        --danger: #ef4444;
+        --text: #e8e8f8;
+        --muted: #5a5a7a;
+        --mono: "Space Mono", monospace;
+        --display: "Unbounded", sans-serif;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: var(--mono);
+        background: var(--bg);
+        color: var(--text);
+        min-height: 100vh;
+        overflow-x: hidden; /* Чтобы сферы не вызывали прокрутку */
+      }
+      body::after {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background: repeating-linear-gradient(
+          0deg,
+          transparent,
+          transparent 2px,
+          rgba(0, 0, 0, 0.03) 2px,
+          rgba(0, 0, 0, 0.03) 4px
+        );
+        pointer-events: none;
+        z-index: 100;
+      }
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(6, 182, 212, 0.04) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(6, 182, 212, 0.04) 1px, transparent 1px);
+        background-size: 50px 50px;
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      /* --- ФОНОВЫЕ ЭФФЕКТЫ --- */
+      .bg-blobs,
+      .bg-terminal {
+        pointer-events: none !important;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+      .bg-blobs {
+        position: fixed;
+        inset: 0;
+        z-index: -2;
+        overflow: hidden;
+      }
+      .blob {
+        position: absolute;
+        filter: blur(100px);
+        border-radius: 50%;
+        opacity: 0.15;
+        animation: float 12s infinite alternate ease-in-out;
+      }
+      .blob-1 {
+        width: 500px;
+        height: 500px;
+        background: var(--accent);
+        top: 20%;
+        left: -150px;
+      }
+      .blob-2 {
+        width: 600px;
+        height: 600px;
+        background: var(--accent2);
+        bottom: -10%;
+        right: -200px;
+        animation-delay: -4s;
+      }
+      .blob-3 {
+        width: 400px;
+        height: 400px;
+        background: var(--accent3);
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        animation-delay: -7s;
+        opacity: 0.1;
+      }
+      @keyframes float {
+        0% {
+          transform: translate(0, 0) scale(1);
+        }
+        100% {
+          transform: translate(40px, -40px) scale(1.1);
+        }
+      }
+
+      .bg-terminal {
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        color: rgba(6, 182, 212, 0.25);
+        text-shadow: 0 0 5px rgba(6, 182, 212, 0.3);
+        font-family: var(--mono);
+        font-size: 11px;
+        line-height: 1.5;
+        -webkit-mask-image: linear-gradient(
+          to bottom,
+          transparent 2%,
+          black 10%,
+          black 90%,
+          transparent 98%
+        );
+        mask-image: linear-gradient(
+          to bottom,
+          transparent 2%,
+          black 10%,
+          black 90%,
+          transparent 98%
+        );
+      }
+      .term-col {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        padding: 20px;
+        pointer-events: none !important;
+      }
+      .term-left {
+        left: 0;
+        width: 50vw;
+        max-width: calc(50vw - 350px);
+        white-space: nowrap;
+        overflow: hidden;
+        -webkit-mask-image: linear-gradient(
+          to right,
+          black 70%,
+          transparent 100%
+        );
+        mask-image: linear-gradient(to right, black 70%, transparent 100%);
+      }
+      .term-right {
+        right: 0;
+        width: 300px;
+        max-width: 25vw;
+        text-align: right;
+      }
+      .term-line {
+        opacity: 0;
+        animation: typeFadeIn 0.2s forwards;
+      }
+      @keyframes typeFadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(5px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      @media (max-width: 1000px) {
+        .term-left {
+          max-width: 25vw;
+        }
+      }
+
+      /* --- ИНТЕРФЕЙС --- */
+      .wrap {
+        position: relative;
+        z-index: 1;
+        max-width: 700px;
+        margin: 0 auto;
+        padding: 2rem 1.25rem 4rem;
+      }
+
+      /* Эффект стекла для блоков поверх терминала */
+      .name-card,
+      .blk,
+      .cipher,
+      .code,
+      .loc,
+      .code-box,
+      .steps-box,
+      .nav {
+        -webkit-backdrop-filter: blur(8px);
+        backdrop-filter: blur(8px);
+      }
+
+      .hero {
+        text-align: center;
+        padding: 3rem 0 2rem;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 3rem;
+      }
+      .badge {
+        display: inline-block;
+        font-size: 10px;
+        letter-spacing: 0.25em;
+        text-transform: uppercase;
+        color: var(--accent);
+        border: 1px solid var(--accent);
+        padding: 5px 14px;
+        margin-bottom: 1.25rem;
+        animation: blink 2s ease infinite;
+      }
+      @keyframes blink {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.5;
+        }
+      }
+      h1 {
+        font-family: var(--display);
+        font-size: clamp(2rem, 8vw, 3.5rem);
+        font-weight: 900;
+        letter-spacing: -0.03em;
+        line-height: 1;
+        margin-bottom: 0.5rem;
+      }
+      .dim {
+        color: var(--muted);
+      }
+      .hi {
+        color: var(--accent);
+      }
+      .sub {
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.7;
+        max-width: 480px;
+        margin: 1rem auto 0;
+      }
+
+      .name-card,
+      .blk {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+      }
+      .lbl,
+      .blk-l {
+        font-size: 11px;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 0.75rem;
+        display: block;
+      }
+      .name-inp,
+      .ans-in {
+        width: 100%;
+        background: var(--surface2);
+        -webkit-backdrop-filter: blur(8px);
+        backdrop-filter: blur(8px);
+        border: 1px solid var(--border);
+        color: var(--text);
+        padding: 0.875rem 1rem;
+        outline: none;
+        transition: border-color 0.15s;
+      }
+      .name-inp {
+        font-family: var(--display);
+        font-size: 18px;
+        font-weight: 700;
+      }
+      .ans-in {
+        font-family: var(--mono);
+        font-size: 16px;
+        font-weight: 700;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        flex: 1;
+      }
+      .name-inp:focus,
+      .ans-in:focus {
+        border-color: var(--accent);
+      }
+      .ans-in.err {
+        border-color: var(--danger);
+        animation: shk 0.3s ease;
+      }
+      .ans-in.ok {
+        border-color: var(--accent3);
+      }
+      @keyframes shk {
+        0%,
+        100% {
+          transform: translateX(0);
+        }
+        25% {
+          transform: translateX(-6px);
+        }
+        75% {
+          transform: translateX(6px);
+        }
+      }
+
+      .go-btn,
+      .ck-btn,
+      .reveal-btn {
+        background: var(--accent);
+        border: none;
+        color: var(--bg);
+        font-family: var(--display);
+        font-weight: 700;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition: opacity 0.15s;
+      }
+      .go-btn {
+        width: 100%;
+        margin-top: 10px;
+        font-size: 12px;
+        letter-spacing: 0.15em;
+        padding: 1rem;
+      }
+      .ck-btn {
+        font-size: 11px;
+        letter-spacing: 0.1em;
+        padding: 0.875rem 1.25rem;
+        white-space: nowrap;
+      }
+      .reveal-btn {
+        width: 100%;
+        background: var(--accent3);
+        font-size: 13px;
+        letter-spacing: 0.15em;
+        padding: 1.1rem;
+        margin-top: 1rem;
+      }
+      .go-btn:hover,
+      .ck-btn:hover,
+      .reveal-btn:hover {
+        opacity: 0.85;
+      }
+      .go-btn:disabled {
+        opacity: 0.35;
+        cursor: default;
+      }
+
+      .blk p {
+        font-size: 14px;
+        line-height: 1.8;
+        color: var(--text);
+      }
+      .prog-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 2rem;
+      }
+      .prog-lbl {
+        font-size: 11px;
+        color: var(--muted);
+        letter-spacing: 0.1em;
+        white-space: nowrap;
+      }
+      .prog-track {
+        flex: 1;
+        height: 3px;
+        background: var(--border);
+      }
+      .prog-fill {
+        height: 100%;
+        background: var(--accent);
+        transition: width 0.4s ease;
+      }
+      .prog-pct {
+        font-size: 11px;
+        color: var(--accent);
+        white-space: nowrap;
+        font-weight: 700;
+      }
+
+      .nav {
+        display: flex;
+        gap: 0;
+        margin-bottom: 3rem;
+        border: 1px solid var(--border);
+        background: var(--surface);
+      }
+      .ndot {
+        flex: 1;
+        text-align: center;
+        padding: 10px 4px;
+        font-size: 10px;
+        letter-spacing: 0.1em;
+        color: var(--muted);
+        border-right: 1px solid var(--border);
+        font-family: var(--display);
+        font-weight: 700;
+      }
+      .ndot:last-child {
+        border-right: none;
+      }
+      .ndot.active {
+        color: var(--accent);
+        background: rgba(6, 182, 212, 0.06);
+      }
+      .ndot.done {
+        color: var(--accent3);
+        background: rgba(16, 185, 129, 0.06);
+      }
+      .ndot-n {
+        font-size: 16px;
+        display: block;
+        margin-bottom: 2px;
+      }
+
+      .stg {
+        display: none;
+        animation: sli 0.25s ease;
+      }
+      .stg.active {
+        display: block;
+      }
+      @keyframes sli {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .stg-hd {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+      }
+      .stg-n {
+        font-family: var(--display);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.2em;
+        color: var(--accent);
+        background: rgba(6, 182, 212, 0.08);
+        border: 1px solid rgba(6, 182, 212, 0.3);
+        padding: 6px 12px;
+        white-space: nowrap;
+      }
+      .stg-t {
+        font-family: var(--display);
+        font-size: 18px;
+        font-weight: 700;
+      }
+
+      .cipher {
+        font-family: var(--mono);
+        font-size: clamp(13px, 3.5vw, 18px);
+        font-weight: 700;
+        letter-spacing: 0.2em;
+        color: var(--accent);
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-left: 3px solid var(--accent);
+        padding: 1.25rem;
+        margin-bottom: 1rem;
+        word-break: break-all;
+        line-height: 2;
+      }
+      .c-amber {
+        color: var(--warn);
+        border-left-color: var(--warn);
+      }
+      .code {
+        background: rgba(13, 17, 23, 0.85);
+        border: 1px solid var(--border);
+        border-left: 3px solid var(--accent3);
+        padding: 1rem;
+        font-family: var(--mono);
+        font-size: 13px;
+        line-height: 1.8;
+        white-space: pre;
+        overflow-x: auto;
+        margin-bottom: 1rem;
+        color: #e6edf3;
+      }
+      .kw {
+        color: #ff7b72;
+      }
+      .fn {
+        color: #d2a8ff;
+      }
+      .str {
+        color: #a5d6ff;
+      }
+      .cm {
+        color: #8b949e;
+      }
+
+      .imgb {
+        margin-bottom: 1rem;
+        border: 1px solid var(--border);
+        overflow: hidden;
+        position: relative;
+      }
+      .imgb img {
+        width: 100%;
+        max-height: 260px;
+        object-fit: cover;
+        display: block;
+      }
+
+      .ans-w {
+        margin-top: 1rem;
+      }
+      .ans-row {
+        display: flex;
+        gap: 8px;
+      }
+      .fb {
+        font-size: 13px;
+        margin-top: 10px;
+        padding: 8px 12px;
+        border-left: 3px solid;
+        display: none;
+        -webkit-backdrop-filter: blur(8px);
+        backdrop-filter: blur(8px);
+      }
+      .fb.ok {
+        color: var(--accent3);
+        border-color: var(--accent3);
+        background: rgba(16, 185, 129, 0.06);
+      }
+      .fb.fail {
+        color: var(--danger);
+        border-color: var(--danger);
+        background: rgba(239, 68, 68, 0.06);
+      }
+
+      .loc {
+        background: rgba(124, 58, 237, 0.1);
+        border: 1px solid rgba(124, 58, 237, 0.3);
+        padding: 1rem 1.25rem;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: flex-start;
+        gap: 1rem;
+      }
+      .loc-ic {
+        font-size: 24px;
+        flex-shrink: 0;
+        margin-top: 2px;
+      }
+      .loc-t {
+        font-size: 13px;
+        line-height: 1.7;
+        color: var(--text);
+      }
+      .loc-t strong {
+        color: #a78bfa;
+        font-weight: 700;
+      }
+
+      .code-box {
+        background: var(--surface2);
+        border: 2px solid var(--accent3);
+        padding: 2rem;
+        text-align: center;
+        margin: 1.5rem 0;
+      }
+      .code-box-lbl {
+        font-size: 10px;
+        letter-spacing: 0.25em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 0.5rem;
+      }
+      .code-name {
+        font-family: var(--display);
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--text);
+        margin-bottom: 0.75rem;
+        letter-spacing: 0.05em;
+      }
+      .code-num {
+        font-family: var(--display);
+        font-size: clamp(2.5rem, 10vw, 4.5rem);
+        font-weight: 900;
+        color: var(--accent3);
+        letter-spacing: 0.2em;
+        animation: glo 2s ease infinite;
+      }
+      @keyframes glo {
+        0%,
+        100% {
+          text-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+        }
+        50% {
+          text-shadow: 0 0 50px rgba(16, 185, 129, 0.8);
+        }
+      }
+      .code-inst {
+        font-size: 12px;
+        color: var(--warn);
+        margin-top: 0.75rem;
+        letter-spacing: 0.05em;
+      }
+
+      .win-title {
+        font-family: var(--display);
+        font-size: clamp(1.8rem, 7vw, 3rem);
+        font-weight: 900;
+        color: var(--accent3);
+        text-align: center;
+        padding: 2rem 0 1rem;
+        letter-spacing: -0.02em;
+        animation: glo 2s ease infinite;
+      }
+      .win-sub {
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.8;
+        text-align: center;
+        max-width: 460px;
+        margin: 0 auto 1.5rem;
+      }
+      .steps-box {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        padding: 1.25rem;
+      }
+      .step-l {
+        font-size: 13px;
+        line-height: 2.4;
+        color: var(--text);
+      }
+      .step-l span {
+        color: var(--accent);
+      }
+    </style>
+  </head>
+  <body>
+    <!-- ФОНОВЫЕ ЭФФЕКТЫ -->
+    <div class="bg-blobs">
+      <div class="blob blob-1"></div>
+      <div class="blob blob-2"></div>
+      <div class="blob blob-3"></div>
+    </div>
+
+    <!-- ТЕРМИНАЛ НА ФОНЕ -->
+    <div class="bg-terminal" id="bg-terminal">
+      <div class="term-col term-left" id="term-left"></div>
+      <div class="term-col term-right" id="term-right"></div>
+    </div>
+
+    <div class="wrap">
+      <div class="hero">
+        <div class="badge">// КВЕСТ · ДЕКАДА ИНФОРМАТИКИ</div>
+        <h1>
+          <span class="dim">ЦИФРОВОЙ</span><br /><span class="hi"
+            >ДЕТЕКТИВ</span
+          >
+        </h1>
+        <p class="sub">
+          Реши 5 загадок — каждая приведёт к следующей точке в школе.<br />В
+          финале получишь
+          <strong style="color: var(--accent3)">уникальный личный код</strong> —
+          предъяви учителю и забери приз!
+        </p>
+      </div>
+
+      <!-- ===== ИМЯ ===== -->
+      <div id="name-screen">
+        <div class="name-card">
+          <span class="lbl">// введи своё имя и фамилию</span>
+          <input
+            class="name-inp"
+            id="pname"
+            placeholder="Иванов Иван"
+            maxlength="50"
+            oninput="
+              document.getElementById('gbtn').disabled =
+                this.value.trim().length < 2
+            "
+          />
+          <button class="go-btn" id="gbtn" disabled onclick="startQuest()">
+            НАЧАТЬ КВЕСТ →
+          </button>
+        </div>
+        <div class="blk">
+          <div class="blk-l">// почему нужно имя?</div>
+          <p>
+            Сайт сгенерирует
+            <strong style="color: var(--accent)"
+              >уникальный 6-значный код</strong
+            >
+            специально для тебя — на основе твоего имени и сегодняшней даты.
+            Учитель проверит его мгновенно. Чужой код не пройдёт!
+          </p>
+        </div>
+      </div>
+
+      <!-- ===== КВЕСТ ===== -->
+      <div id="qbody" style="display: none">
+        <div class="prog-row">
+          <span class="prog-lbl">// прогресс</span>
+          <div class="prog-track">
+            <div class="prog-fill" id="pfill" style="width: 0%"></div>
+          </div>
+          <span class="prog-pct" id="ppct">0 / 5</span>
+        </div>
+
+        <div class="nav">
+          <div class="ndot active" id="d0">
+            <span class="ndot-n">01</span>СТАРТ
+          </div>
+          <div class="ndot" id="d1"><span class="ndot-n">02</span>ШИФР</div>
+          <div class="ndot" id="d2"><span class="ndot-n">03</span>КОД</div>
+          <div class="ndot" id="d3"><span class="ndot-n">04</span>ТАЙНА</div>
+          <div class="ndot" id="d4"><span class="ndot-n">05</span>ФИНАЛ</div>
+        </div>
+
+        <!-- ЭТАП 1: Двоичный -->
+        <div class="stg active" id="s0">
+          <div class="stg-hd">
+            <div class="stg-n">ЭТАП 01</div>
+            <div class="stg-t">Послание из 1991-го</div>
+          </div>
+          <div class="blk">
+            <div class="blk-l">// легенда</div>
+            <p>
+              Детектив! Наш сервер получил зашифрованное послание. Говорят, его
+              оставил создатель Linux ещё в 1991 году. Расшифруй двоичный код и
+              узнай первое ключевое слово!
+            </p>
+          </div>
+          <div class="cipher">
+            01001100 → ?<br />01001001 → ?<br />01001110 → ?<br />01010101 →
+            ?<br />01011000 → ?
+          </div>
+          <div class="blk">
+            <div class="blk-l">// как расшифровать</div>
+            <p>
+              Переведи каждый байт из двоичной системы в десятичное число, найди
+              букву в таблице ASCII.
+            </p>
+          </div>
+          <div class="ans-w">
+            <span class="lbl">// расшифрованное слово (5 букв)</span>
+            <div class="ans-row">
+              <input
+                class="ans-in"
+                id="a0"
+                placeholder="_ _ _ _ _"
+                maxlength="10"
+              />
+              <button class="ck-btn" onclick="chk(0)">OK</button>
+            </div>
+            <div class="fb" id="f0"></div>
+          </div>
+
+          <!-- ПЕРЕХОД 1 -->
+          <div id="n0" style="display: none; margin-top: 1.5rem">
+            <div class="loc">
+              <div class="loc-ic">📍</div>
+              <div class="loc-t">
+                Первый ключ: <strong>LINUX</strong>!<br />Иди к
+                <strong>кабинету информатики №301</strong> — найди учителя,
+                чтобы узнать <strong>секретный код перехода</strong>!
+              </div>
+            </div>
+            <div
+              class="ans-w"
+              style="
+                margin-top: 1rem;
+                border-top: 1px dashed var(--border);
+                padding-top: 1.5rem;
+              "
+            >
+              <span class="lbl">// введи полученный код перехода</span>
+              <div class="ans-row">
+                <input
+                  class="ans-in"
+                  id="trans0"
+                  placeholder="ПАРОЛЬ..."
+                  maxlength="20"
+                />
+                <button class="ck-btn" onclick="checkTransition(0, 1)">
+                  ОТКРЫТЬ
+                </button>
+              </div>
+              <div class="fb" id="trans-fb0"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ЭТАП 2: Цезарь -->
+        <div class="stg" id="s1">
+          <div class="stg-hd">
+            <div class="stg-n">ЭТАП 02</div>
+            <div class="stg-t">Скрытое имя</div>
+          </div>
+          <div class="blk">
+            <div class="blk-l">// задание</div>
+            <p>
+              Это <strong>шифр Цезаря</strong> со сдвигом 3. Расшифруй фамилию
+              знаменитой личности из мира IT!
+            </p>
+          </div>
+          <div class="cipher c-amber">MREV</div>
+          <div class="imgb">
+            <img
+              src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/Steve_Jobs_Headshot_2010-CROP_%28cropped_2%29.jpg/440px-Steve_Jobs_Headshot_2010-CROP_%28cropped_2%29.jpg"
+              alt="IT личность"
+              onerror="this.parentElement.style.display = 'none'"
+            />
+          </div>
+          <div class="ans-w">
+            <span class="lbl"
+              >// расшифрованная фамилия (на латинице или кириллице)</span
+            >
+            <div class="ans-row">
+              <input
+                class="ans-in"
+                id="a1"
+                placeholder="_ _ _ _"
+                maxlength="20"
+              />
+              <button class="ck-btn" onclick="chk(1)">OK</button>
+            </div>
+            <div class="fb" id="f1"></div>
+          </div>
+
+          <!-- ПЕРЕХОД 2 -->
+          <div id="n1" style="display: none; margin-top: 1.5rem">
+            <div class="loc">
+              <div class="loc-ic">📍</div>
+              <div class="loc-t">
+                Верно! Второй ключ: <strong>ДЖОБС</strong>!<br />Отправляйся в
+                <strong>школьную библиотеку</strong>. Найди книгу на одном из
+                подоконников, открой страницу 52 — ты получишь
+                <strong>код перехода к этапу 3</strong>!
+              </div>
+            </div>
+            <div
+              class="ans-w"
+              style="
+                margin-top: 1rem;
+                border-top: 1px dashed var(--border);
+                padding-top: 1.5rem;
+              "
+            >
+              <span class="lbl">// код от библиотекаря</span>
+              <div class="ans-row">
+                <input
+                  class="ans-in"
+                  id="trans1"
+                  placeholder="ПАРОЛЬ..."
+                  maxlength="20"
+                />
+                <button class="ck-btn" onclick="checkTransition(1, 2)">
+                  ОТКРЫТЬ
+                </button>
+              </div>
+              <div class="fb" id="trans-fb1"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ЭТАП 3: Ловушка со ссылками -->
+        <div class="stg" id="s2">
+          <div class="stg-hd">
+            <div class="stg-n">ЭТАП 03</div>
+            <div class="stg-t">Ловушка в памяти</div>
+          </div>
+          <div class="blk">
+            <div class="blk-l">// задание</div>
+            <p>
+              Перед тобой фрагмент кода на языке Python. Что будет выведено на
+              экран в результате его выполнения? Будь внимателен к тому, как
+              язык работает с памятью и ссылками на списки.
+            </p>
+          </div>
+          <div class="code">
+            <span class="kw">def</span> <span class="fn">mystery</span>(): x
+            =[<span class="str">1</span>, <span class="str">2</span>,
+            <span class="str">3</span>] y = x y.append(<span class="str">4</span
+            >) <span class="kw">return</span> len(x) *
+            <span class="str">10</span>
+
+            <span class="fn">print</span>(mystery())
+          </div>
+          <div class="ans-w">
+            <span class="lbl">// введи число, которое выведет программа</span>
+            <div class="ans-row">
+              <input class="ans-in" id="a2" placeholder="_ _" maxlength="10" />
+              <button class="ck-btn" onclick="chk(2)">OK</button>
+            </div>
+            <div class="fb" id="f2"></div>
+          </div>
+
+          <!-- ПЕРЕХОД 3 -->
+          <div id="n2" style="display: none; margin-top: 1.5rem">
+            <div class="loc">
+              <div class="loc-ic">📍</div>
+              <div class="loc-t">
+                Третий ключ получен: <strong>40</strong>!<br />Иди в
+                <strong>303й кабинет</strong> — там на одном из компьютеров есть
+                питоновоский скрипт, запустив который ты получишь
+                <strong>код перехода</strong>!
+              </div>
+            </div>
+            <div
+              class="ans-w"
+              style="
+                margin-top: 1rem;
+                border-top: 1px dashed var(--border);
+                padding-top: 1.5rem;
+              "
+            >
+              <span class="lbl">// код со стены для перехода</span>
+              <div class="ans-row">
+                <input
+                  class="ans-in"
+                  id="trans2"
+                  placeholder="ПАРОЛЬ..."
+                  maxlength="20"
+                />
+                <button class="ck-btn" onclick="checkTransition(2, 3)">
+                  ОТКРЫТЬ
+                </button>
+              </div>
+              <div class="fb" id="trans-fb2"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ЭТАП 4: XOR Базовая криптография -->
+        <div class="stg" id="s3">
+          <div class="stg-hd">
+            <div class="stg-n">ЭТАП 04</div>
+            <div class="stg-t">Базовая криптография</div>
+          </div>
+          <div class="blk">
+            <div class="blk-l">// задание</div>
+            <p>
+              Хакер зашифровал слово с помощью побитовой операции XOR
+              (Исключающее ИЛИ) с ключом <strong>0x2A</strong>. Зашифрованные
+              байты перехвачены в шестнадцатеричном виде. Примени XOR с тем же
+              ключом к каждому байту, а затем переведи полученные числа в текст
+              по таблице ASCII!
+            </p>
+          </div>
+          <div class="cipher c-amber">0x68 0x73 0x7E 0x6F</div>
+          <div class="ans-w">
+            <span class="lbl">// какое слово зашифровано?</span>
+            <div class="ans-row">
+              <input
+                class="ans-in"
+                id="a3"
+                placeholder="_ _ _ _"
+                maxlength="20"
+              />
+              <button class="ck-btn" onclick="chk(3)">OK</button>
+            </div>
+            <div class="fb" id="f3"></div>
+          </div>
+
+          <!-- ПЕРЕХОД 4 -->
+          <div id="n3" style="display: none; margin-top: 1.5rem">
+            <div class="loc">
+              <div class="loc-ic">🏆</div>
+              <div class="loc-t">
+                Отлично! Четвёртый ключ: <strong>BYTE</strong>!<br />Возвращайся
+                в <strong>кабинет информатики 301</strong> — найди спрятанный
+                пароль для <strong>доступа к финальному испытанию</strong>!
+              </div>
+            </div>
+            <div
+              class="ans-w"
+              style="
+                margin-top: 1rem;
+                border-top: 1px dashed var(--border);
+                padding-top: 1.5rem;
+              "
+            >
+              <span class="lbl">// код допуска в финал</span>
+              <div class="ans-row">
+                <input
+                  class="ans-in"
+                  id="trans3"
+                  placeholder="ПАРОЛЬ..."
+                  maxlength="20"
+                />
+                <button class="ck-btn" onclick="checkTransition(3, 4)">
+                  ОТКРЫТЬ
+                </button>
+              </div>
+              <div class="fb" id="trans-fb3"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ЭТАП 5: ФИНАЛ -->
+        <div class="stg" id="s4">
+          <div class="stg-hd">
+            <div class="stg-n">ЭТАП 05</div>
+            <div class="stg-t">Взлом Главного Терминала</div>
+          </div>
+          <div class="blk">
+            <div class="blk-l">// финальное испытание: слияние миров</div>
+            <p>
+              Нейросети на телефоне круты, но у них
+              <strong>нет доступа к среде выполнения</strong>. Твоя задача —
+              подойти к одному из компьютеров в кабинете 301. Там открыта
+              секретная страница сервера(спроси у учителя).
+            </p>
+            <p style="margin-top: 1rem; color: var(--accent)">
+              На странице компьютера работает скрытая JS-функция
+              <code style="color: var(--accent3)">checkPin(pin)</code>. Она
+              принимает 4-значный ПИН (1000-9999). Если пин верен, она выдаст
+              кодовое слово.
+            </p>
+          </div>
+
+          <div class="blk">
+            <div class="blk-l">// вектор атаки</div>
+            <p style="font-size: 13px; line-height: 1.9">
+              1. <strong>Автоматизация:</strong> Вводить 4-значные ПИН-коды
+              вручную — удел дилетантов. Делегируй рутину ИИ! Объясни своей
+              нейросети задачу и попроси написать JS-скрипт для автоматического
+              перебора паролей (brute-force) к функции
+              <code>checkPin(pin)</code>.<br />
+              2. <strong>Доступ к среде:</strong> На компьютере учителя открой
+              браузерную консоль<br />
+              3. <strong>Внедрение:</strong> Выполни код от нейросети в этой
+              консоли. Если ты правильно ввел скрипт, машина выплюнет секретное
+              слово на экран.<br />
+              4. <strong>Финал:</strong> Перехвати слово с экрана ПК и введи в
+              свой телефон.
+            </p>
+          </div>
+
+          <div class="ans-w" id="final-task">
+            <span class="lbl">// введи слово с экрана компьютера (9 букв)</span>
+            <div class="ans-row">
+              <input
+                class="ans-in"
+                id="a4"
+                placeholder="_ _ _ _ _ _ _ _ _"
+                maxlength="20"
+              />
+              <button class="ck-btn" onclick="chk(4)">ОТВЕТИТЬ</button>
+            </div>
+            <div class="fb" id="f4"></div>
+          </div>
+
+          <div id="n4" style="display: none; margin-top: 1.5rem">
+            <div
+              class="loc"
+              style="
+                background: rgba(16, 185, 129, 0.06);
+                border-color: rgba(16, 185, 129, 0.3);
+              "
+            >
+              <div class="loc-ic">🏆</div>
+              <div class="loc-t">
+                <strong>ПОБЕДА!</strong> Ты доказал, что можешь использовать ИИ
+                как инструмент и сам являешься настоящим инженером! Жми кнопку
+                ниже.
+              </div>
+            </div>
+            <button class="reveal-btn" onclick="showCode()">
+              ПОЛУЧИТЬ МОЙ КОД
+            </button>
+          </div>
+
+          <!-- ИТОГОВЫЙ ЭКРАН -->
+          <div id="post-reveal" style="display: none; margin-top: 2rem">
+            <div class="code-box">
+              <div class="code-box-lbl">// твой уникальный код детектива</div>
+              <div class="code-name" id="dname"></div>
+              <div class="code-num" id="dcode"></div>
+              <div class="code-inst">↑ Покажи этот экран учителю ↑</div>
+            </div>
+            <div class="win-title">МИССИЯ<br />ВЫПОЛНЕНА!</div>
+            <p class="win-sub">
+              Ты разгадал все загадки, покорил код и стал настоящим<br />
+              <strong style="color: var(--accent3)"
+                >Цифровым Детективом!</strong
+              >
+            </p>
+            <div class="steps-box">
+              <div class="blk-l">// пройденный путь</div>
+              <div class="step-l">✓ Двоичный код → <span>LINUX</span></div>
+              <div class="step-l">✓ Шифр Цезаря → <span>JOBS</span></div>
+              <div class="step-l">✓ Python Ловушка → <span>40</span></div>
+              <div class="step-l">✓ XOR-Шифрование → <span>BYTE</span></div>
+              <div class="step-l">
+                ✓ Взлом Терминала ПК → <span>СИНТАКСИС</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // ================= ФОНОВЫЙ ТЕРМИНАЛ =================
+      const termPhrases = [
+        "SYSTEM BOOT SEQUENCE INITIATED...",
+        "LOADING KERNEL MODULES... OK",
+        "MOUNTING VIRTUAL FILESYSTEMS... DONE",
+        "INITIALIZING NETWORK INTERFACES...[eth0: UP]",
+        "ESTABLISHING SECURE CONNECTION...",
+        "HANDSHAKE PROTOCOL: ACCEPTED",
+        "DECRYPTING DATA STREAM...",
+        "ALLOCATING MEMORY POOLS: 0x8F4A2B00",
+        "CHECKING FIREWALL RULES... PASS",
+        "PORT SCAN DETECTED. MITIGATING...",
+        "LOADING DEPENDENCIES... 100%",
+        "EXECUTING MAIN LOOP...",
+        "WAITING FOR USER INPUT...",
+        "CPU USAGE: 14% | RAM: 1.2GB/16GB",
+        "Pinging 192.168.1.1... Reply from 192.168.1.1: bytes=32 time=2ms",
+        "Warning: Unauthorized access attempt blocked.",
+        "Syncing telemetry data to server...",
+        "root@system:~# _",
+      ];
+
+      function addTerminalLine(colId, skipAnim = false) {
+        const col = document.getElementById(colId);
+        if (!col) return;
+        const line = document.createElement("div");
+        line.className = "term-line";
+
+        if (skipAnim) {
+          line.style.animation = "none";
+          line.style.opacity = "1";
+        }
+
+        let text = "";
+
+        if (colId === "term-left" && Math.random() > 0.9) {
+          const hexChars = "0123456789ABCDEF";
+          const b64 =
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+          const randType = Math.random();
+
+          if (randType < 0.33) {
+            text = "SYS_MEM_DUMP: 0x";
+            for (let i = 0; i < 150; i++)
+              text += hexChars[Math.floor(Math.random() * 16)];
+          } else if (randType < 0.66) {
+            text = "CERT_CHAIN_VERIFY_PAYLOAD: ";
+            for (let i = 0; i < 150; i++)
+              text += b64[Math.floor(Math.random() * 64)];
+            text += "==";
+          } else {
+            text = "TRACE_ROUTE_PACKET_DROP_SEQUENCE:[";
+            for (let i = 0; i < 40; i++)
+              text +=
+                Math.floor(Math.random() * 255) +
+                "." +
+                Math.floor(Math.random() * 255) +
+                " ";
+            text += "]";
+          }
+        } else {
+          if (Math.random() > 0.3) {
+            text = termPhrases[Math.floor(Math.random() * termPhrases.length)];
+          } else {
+            let hex =
+              "0x" +
+              Math.floor(Math.random() * 16777215)
+                .toString(16)
+                .padStart(8, "0")
+                .toUpperCase() +
+              "  ";
+            for (let i = 0; i < 4; i++) {
+              hex +=
+                Math.floor(Math.random() * 255)
+                  .toString(16)
+                  .padStart(2, "0")
+                  .toUpperCase() + " ";
+            }
+            text = hex;
+          }
+        }
+
+        line.textContent = text;
+        col.appendChild(line);
+
+        const maxLines = colId === "term-left" ? 60 : 18;
+
+        if (col.childNodes.length > maxLines) {
+          col.removeChild(col.firstChild);
+        }
+      }
+
+      for (let i = 0; i < 60; i++) {
+        addTerminalLine("term-left", true);
+      }
+
+      setInterval(() => addTerminalLine("term-left"), 350);
+      setInterval(() => addTerminalLine("term-right"), 450);
+
+      // ═══════════ НАСТРОЙКИ КВЕСТА (МЕНЯЙ ТОЛЬКО ЗДЕСЬ) ═══════════
+      const SECRET = "DECADA2025INFO";
+
+      const TRANSITION_CODES = [
+        ["паскаль", "pascal"], // Код для Этапа 02 (от учителя в 301)
+        ["сервер", "server"], // Код для Этапа 03 (от библиотекаря)
+        ["пиксель", "pixel"], // Код для Этапа 04 (из актового зала)
+        ["доступ", "access"], // Код для Финала (от учителя в фойе)
+      ];
+      // ═════════════════════════════════════════════════════════════
+
+      const ANSWERS = [
+        ["linux", "линукс"],
+        ["jobs", "джобс"],
+        ["40", "сорок"],
+        ["byte", "байт"],
+        ["синтаксис", "syntax"],
+      ];
+
+      let playerName = "";
+      let solved = [false, false, false, false, false];
+      let cur = 0;
+
+      async function genCode(name) {
+        const today = new Date().toISOString().slice(0, 10);
+        const raw = name.trim().toUpperCase() + "|" + today + "|" + SECRET;
+        const buf = await crypto.subtle.digest(
+          "SHA-256",
+          new TextEncoder().encode(raw),
+        );
+        const arr = Array.from(new Uint8Array(buf));
+        return (
+          (((arr[0] << 16) | (arr[1] << 8) | arr[2]) % 900000) +
+          100000
+        ).toString();
+      }
+
+      function startQuest() {
+        playerName = document.getElementById("pname").value.trim();
+        if (playerName.length < 2) return;
+        document.getElementById("name-screen").style.display = "none";
+        document.getElementById("qbody").style.display = "block";
+      }
+
+      function setStage(n) {
+        cur = n;
+        document
+          .querySelectorAll(".stg")
+          .forEach((s, i) => s.classList.toggle("active", i === n));
+        for (let i = 0; i < 5; i++) {
+          const d = document.getElementById("d" + i);
+          d.className = "ndot";
+          if (solved[i]) d.classList.add("done");
+          if (i === n) d.classList.add("active");
+        }
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+
+      function updProg() {
+        const n = solved.filter(Boolean).length;
+        document.getElementById("pfill").style.width = (n / 5) * 100 + "%";
+        document.getElementById("ppct").textContent = n + " / 5";
+      }
+
+      function chk(stage) {
+        const inp = document.getElementById("a" + stage);
+        const fb = document.getElementById("f" + stage);
+        const val = inp.value.trim().toLowerCase();
+        if (!val) return;
+        const ok = ANSWERS[stage].some((a) => val === a);
+        fb.style.display = "block";
+        if (ok) {
+          inp.classList.remove("err");
+          inp.classList.add("ok");
+          fb.className = "fb ok";
+
+          if (stage === 4) {
+            fb.textContent = "✓ Терминал взломан! Доступ к генератору получен.";
+            document.getElementById("n" + stage).style.display = "block";
+            solved[stage] = true;
+            updProg();
+            document.getElementById("d" + stage).classList.add("done");
+          } else {
+            fb.textContent =
+              "✓ Верно! Инструкция к следующему шагу открыта ниже.";
+            solved[stage] = true;
+            updProg();
+            document.getElementById("n" + stage).style.display = "block";
+            document.getElementById("d" + stage).classList.add("done");
+          }
+        } else {
+          inp.classList.remove("ok");
+          inp.classList.add("err");
+          fb.className = "fb fail";
+          fb.textContent = "✗ Ошибка дешифровки. Подумай ещё раз.";
+          setTimeout(() => inp.classList.remove("err"), 400);
+        }
+      }
+
+      function checkTransition(current, next) {
+        const inp = document.getElementById("trans" + current);
+        const fb = document.getElementById("trans-fb" + current);
+        const val = inp.value.trim().toLowerCase();
+        if (!val) return;
+
+        const ok = TRANSITION_CODES[current].some((a) => val === a);
+        fb.style.display = "block";
+
+        if (ok) {
+          inp.classList.remove("err");
+          inp.classList.add("ok");
+          fb.className = "fb ok";
+          fb.textContent = "✓ Доступ разрешён! Переходим...";
+          setTimeout(() => setStage(next), 600);
+        } else {
+          inp.classList.remove("ok");
+          inp.classList.add("err");
+          fb.className = "fb fail";
+          fb.textContent =
+            "✗ Неверный код перехода! Спроси у учителя или проверь кабинет.";
+          setTimeout(() => inp.classList.remove("err"), 400);
+        }
+      }
+
+      async function showCode() {
+        const code = await genCode(playerName);
+        document.getElementById("dname").textContent = playerName.toUpperCase();
+        document.getElementById("dcode").textContent = code;
+
+        document.getElementById("final-task").style.display = "none";
+        document.getElementById("n4").style.display = "none";
+        document.getElementById("post-reveal").style.display = "block";
+      }
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && cur <= 4) {
+          if (!solved[cur]) {
+            chk(cur);
+          } else if (cur < 4) {
+            checkTransition(cur, cur + 1);
+          }
+        }
+      });
+    </script>
+  </body>
+</html>

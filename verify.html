@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Проверка кода — только для учителя</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Unbounded:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#f8f7f4;--surface:#fff;--border:#e5e3dd;
+    --accent:#7c3aed;--accent2:#10b981;--danger:#ef4444;
+    --text:#1a1a2e;--muted:#8b8b9e;
+    --mono:'Space Mono',monospace;--display:'Unbounded',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:var(--mono);background:var(--bg);color:var(--text);min-height:100vh;}
+  .wrap{max-width:560px;margin:0 auto;padding:2rem 1.25rem;}
+  .header{text-align:center;padding:2.5rem 0 2rem;border-bottom:1px solid var(--border);margin-bottom:2rem;}
+  .badge{display:inline-block;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent);padding:4px 12px;margin-bottom:1rem;}
+  h1{font-family:var(--display);font-size:clamp(1.4rem,5vw,2rem);font-weight:900;letter-spacing:-.02em;color:var(--text);margin-bottom:.5rem;}
+  .sub{font-size:13px;color:var(--muted);line-height:1.6;}
+
+  .card{background:var(--surface);border:1px solid var(--border);padding:1.5rem;margin-bottom:1rem;border-radius:4px;}
+  .card-lbl{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin-bottom:1rem;}
+
+  .form-lbl{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;display:block;}
+  .inp{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--display);font-size:16px;font-weight:700;padding:.75rem 1rem;outline:none;transition:border-color .15s;margin-bottom:12px;border-radius:2px;}
+  .inp:focus{border-color:var(--accent);}
+  .inp::placeholder{color:var(--muted);font-weight:400;font-size:13px;}
+  .inp.code-inp{font-size:22px;letter-spacing:.2em;text-align:center;}
+
+  .verify-btn{width:100%;background:var(--accent);border:none;color:#fff;font-family:var(--display);font-size:12px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;padding:.875rem;cursor:pointer;transition:opacity .15s;border-radius:2px;}
+  .verify-btn:hover{opacity:.85;}
+
+  .result{display:none;margin-top:1rem;padding:1.25rem;border-left:4px solid;border-radius:0 4px 4px 0;}
+  .result.ok{background:rgba(16,185,129,.06);border-color:var(--accent2);}
+  .result.fail{background:rgba(239,68,68,.06);border-color:var(--danger);}
+  .result-icon{font-size:2rem;margin-bottom:.5rem;}
+  .result-title{font-family:var(--display);font-size:16px;font-weight:700;margin-bottom:.5rem;}
+  .result.ok .result-title{color:var(--accent2);}
+  .result.fail .result-title{color:var(--danger);}
+  .result-name{font-size:18px;font-weight:700;color:var(--text);margin-bottom:.25rem;}
+  .result-code{font-size:13px;color:var(--muted);}
+
+  .generated-code{
+    font-family:var(--display);font-size:2.5rem;font-weight:900;
+    color:var(--accent);letter-spacing:.2em;text-align:center;
+    padding:1rem;background:rgba(124,58,237,.05);border:1px solid rgba(124,58,237,.2);
+    margin:1rem 0;border-radius:4px;
+  }
+
+  .divider{border:none;border-top:1px solid var(--border);margin:2rem 0;}
+
+  /* Batch check */
+  .batch-list{display:flex;flex-direction:column;gap:8px;margin-top:1rem;}
+  .batch-item{display:flex;align-items:center;gap:12px;padding:.75rem 1rem;border:1px solid var(--border);font-size:13px;border-radius:2px;}
+  .batch-item.ok{background:rgba(16,185,129,.04);border-color:rgba(16,185,129,.3);}
+  .batch-item.fail{background:rgba(239,68,68,.04);border-color:rgba(239,68,68,.3);}
+  .batch-icon{font-size:18px;flex-shrink:0;}
+  .batch-name{flex:1;font-weight:700;}
+  .batch-code{font-family:var(--display);font-size:14px;color:var(--muted);}
+  .batch-status-ok{color:var(--accent2);font-size:11px;letter-spacing:.1em;text-transform:uppercase;}
+  .batch-status-fail{color:var(--danger);font-size:11px;letter-spacing:.1em;text-transform:uppercase;}
+
+  .warning{background:#fff7ed;border:1px solid #fed7aa;padding:1rem;border-radius:4px;font-size:13px;color:#92400e;line-height:1.6;margin-bottom:1.5rem;}
+  .warning strong{display:block;margin-bottom:.25rem;font-family:var(--display);font-size:12px;letter-spacing:.05em;}
+
+  .gen-section label{font-size:12px;color:var(--muted);display:block;margin-bottom:4px;letter-spacing:.1em;text-transform:uppercase;}
+  .gen-inp{width:100%;background:var(--bg);border:1px solid var(--border);font-family:var(--display);font-size:15px;font-weight:700;padding:.75rem 1rem;outline:none;color:var(--text);margin-bottom:10px;border-radius:2px;}
+  .gen-inp:focus{border-color:var(--accent);}
+  .gen-btn{background:transparent;border:1px solid var(--accent);color:var(--accent);font-family:var(--display);font-size:11px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;padding:.75rem 1.5rem;cursor:pointer;transition:all .15s;border-radius:2px;width:100%;}
+  .gen-btn:hover{background:var(--accent);color:#fff;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <div class="badge">// только для учителя</div>
+    <h1>Проверка<br>кодов учеников</h1>
+    <p class="sub">Введи имя ученика — сайт мгновенно сгенерирует его код и сравнит с тем, что показывает ученик.</p>
+  </div>
+
+  <div class="warning">
+    <strong>⚠ ВАЖНО</strong>
+    Эта страница — для учителя. Не показывай её ученикам. Держи её открытой на своём телефоне или ноутбуке. Страница работает без интернета после первой загрузки.
+  </div>
+
+  <!-- ПРОВЕРКА: ввод имени + кода ученика -->
+  <div class="card">
+    <div class="card-lbl">// проверить код ученика</div>
+    <span class="form-lbl">Имя и фамилия ученика (как он ввёл на сайте)</span>
+    <input class="inp" id="v-name" placeholder="Иванов Иван" maxlength="50">
+    <span class="form-lbl">Код, который показывает ученик</span>
+    <input class="inp code-inp" id="v-code" placeholder="000000" maxlength="6" inputmode="numeric">
+    <button class="verify-btn" onclick="verify()">ПРОВЕРИТЬ КОД →</button>
+    <div class="result" id="v-result">
+      <div class="result-icon" id="r-icon"></div>
+      <div class="result-title" id="r-title"></div>
+      <div class="result-name" id="r-name"></div>
+      <div class="result-code" id="r-code"></div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- ГЕНЕРАЦИЯ: узнать код по имени (если ученик потерял) -->
+  <div class="card gen-section">
+    <div class="card-lbl">// узнать код ученика по имени</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:1rem;line-height:1.7;">Если ученик прошёл квест, но не видит код — введи его имя здесь и покажи ему.</p>
+    <label>Имя и фамилия</label>
+    <input class="gen-inp" id="g-name" placeholder="Иванов Иван" maxlength="50">
+    <button class="gen-btn" onclick="generateForName()">СГЕНЕРИРОВАТЬ КОД</button>
+    <div id="g-result" style="display:none;">
+      <div class="generated-code" id="g-code"></div>
+      <p style="font-size:12px;color:var(--muted);text-align:center;letter-spacing:.05em;">Код для: <strong id="g-name-out" style="color:var(--text);"></strong></p>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- ПАКЕТНАЯ ПРОВЕРКА -->
+  <div class="card">
+    <div class="card-lbl">// быстрая проверка нескольких учеников</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:1rem;line-height:1.7;">Введи список имён (каждое с новой строки) и коды через пробел, чтобы сверить всех сразу.</p>
+    <span class="form-lbl">Имя : код (каждый с новой строки)</span>
+    <textarea class="inp" id="batch-inp" rows="5" placeholder="Иванов Иван : 123456&#10;Петрова Анна : 654321&#10;Сидоров Олег : 111222" style="resize:vertical;font-size:13px;"></textarea>
+    <button class="verify-btn" style="background:#374151;" onclick="batchVerify()">ПРОВЕРИТЬ СПИСОК →</button>
+    <div class="batch-list" id="batch-result"></div>
+  </div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+// ВАЖНО: SECRET должен совпадать с тем, что в quest.html
+const SECRET = 'DECADA2025INFO';
+// ═══════════════════════════════════════════════════
+
+async function genCode(name) {
+  const today = new Date().toISOString().slice(0,10);
+  const raw = name.trim().toUpperCase() + '|' + today + '|' + SECRET;
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
+  const arr = Array.from(new Uint8Array(buf));
+  return (((arr[0]<<16)|(arr[1]<<8)|arr[2]) % 900000 + 100000).toString();
+}
+
+async function verify() {
+  const name = document.getElementById('v-name').value.trim();
+  const inputCode = document.getElementById('v-code').value.trim();
+  if (!name || !inputCode) return;
+
+  const correct = await genCode(name);
+  const ok = inputCode === correct;
+
+  const res = document.getElementById('v-result');
+  res.style.display = 'block';
+  res.className = 'result ' + (ok ? 'ok' : 'fail');
+
+  document.getElementById('r-icon').textContent = ok ? '✅' : '❌';
+  document.getElementById('r-title').textContent = ok ? 'КОД ВЕРНЫЙ — выдай приз!' : 'КОД НЕВЕРНЫЙ — отказать';
+  document.getElementById('r-name').textContent = name;
+  document.getElementById('r-code').textContent = ok
+    ? `Ожидаемый код: ${correct} ✓`
+    : `Показал: ${inputCode} · Ожидалось: ${correct}`;
+}
+
+async function generateForName() {
+  const name = document.getElementById('g-name').value.trim();
+  if (!name) return;
+  const code = await genCode(name);
+  document.getElementById('g-code').textContent = code;
+  document.getElementById('g-name-out').textContent = name;
+  document.getElementById('g-result').style.display = 'block';
+}
+
+async function batchVerify() {
+  const raw = document.getElementById('batch-inp').value.trim();
+  if (!raw) return;
+  const lines = raw.split('\n').filter(l => l.trim());
+  const out = document.getElementById('batch-result');
+  out.innerHTML = '';
+
+  for (const line of lines) {
+    const parts = line.split(':');
+    if (parts.length < 2) continue;
+    const name = parts[0].trim();
+    const code = parts[1].trim();
+    const correct = await genCode(name);
+    const ok = code === correct;
+
+    const el = document.createElement('div');
+    el.className = 'batch-item ' + (ok ? 'ok' : 'fail');
+    el.innerHTML = `
+      <span class="batch-icon">${ok ? '✅' : '❌'}</span>
+      <span class="batch-name">${name}</span>
+      <span class="batch-code">${code}</span>
+      <span class="${ok ? 'batch-status-ok' : 'batch-status-fail'}">${ok ? 'ВЕРНО' : 'НЕВЕРНО'}</span>
+    `;
+    out.appendChild(el);
+  }
+}
+
+// Enter для проверки
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    if (document.activeElement.id === 'v-code') verify();
+    else if (document.activeElement.id === 'g-name') generateForName();
+  }
+});
+</script>
+</body>
+</html>
